@@ -146,7 +146,7 @@ func (c Client) GetCurrentApp() (*Identity, error) {
 	return c.getCurrentApp()
 }
 
-// CreateMerchant ...
+// CreateMerchant creates a new merchant under a given app
 // https://github.com/paylike/api-docs#create-a-merchant
 func (c Client) CreateMerchant(dto MerchantCreateDTO) (*Merchant, error) {
 	b, err := json.Marshal(dto)
@@ -156,13 +156,13 @@ func (c Client) CreateMerchant(dto MerchantCreateDTO) (*Merchant, error) {
 	return c.createMerchant(bytes.NewBuffer(b))
 }
 
-// GetMerchant ...
+// GetMerchant gets a merchant based on it's ID
 // https://github.com/paylike/api-docs#fetch-a-merchant
 func (c Client) GetMerchant(id string) (*Merchant, error) {
 	return c.getMerchant(id)
 }
 
-// FetchMerchants ...
+// FetchMerchants fetches all merchants for given app ID
 // https://github.com/paylike/api-docs#fetch-all-merchants
 func (c Client) FetchMerchants(appID string, limit int) ([]*Merchant, error) {
 	return c.fetchMerchants(appID, limit)
@@ -173,46 +173,28 @@ func (c Client) getURL(url string) string {
 	return fmt.Sprintf("%s%s", c.baseAPI, url)
 }
 
-// createApp handles the API calls towards Paylike API
+// createApp handles the underlying logic of executing the API requests
+// towards the app creation API
 func (c Client) createApp(body io.Reader) (*App, error) {
-	resp, err := c.client.Post(c.getURL("/apps"), "application/json", body)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
+	req, err := http.NewRequest("POST", c.getURL("/apps"), body)
 	if err != nil {
 		return nil, err
 	}
 	var marshalled map[string]*App
-	if err := json.Unmarshal(b, &marshalled); err != nil {
-		return nil, err
-	}
-	return marshalled["app"], nil
+	err = c.executeRequestAndMarshal(req, &marshalled)
+	return marshalled["app"], err
 }
 
-// getCurrentApp executes the request for fetching the current application
-// along with marshalling the response
+// getCurrentApp handles the underlying logic of executing the API requests
+// towards the app API to get the currently used app
 func (c Client) getCurrentApp() (*Identity, error) {
 	req, err := http.NewRequest("GET", c.getURL("/me"), nil)
 	if err != nil {
 		return nil, err
 	}
-	c.setContentHeader(req)
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
 	var marshalled map[string]*Identity
-	if err := json.Unmarshal(b, &marshalled); err != nil {
-		return nil, err
-	}
-	return marshalled["identity"], nil
+	err = c.executeRequestAndMarshal(req, &marshalled)
+	return marshalled["identity"], err
 }
 
 // createMerchant handles the underlying logic of executing the API requests
@@ -222,72 +204,51 @@ func (c Client) createMerchant(body io.Reader) (*Merchant, error) {
 	if err != nil {
 		return nil, err
 	}
-	c.setContentHeader(req)
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
 	var marshalled map[string]*Merchant
-	if err := json.Unmarshal(b, &marshalled); err != nil {
-		return nil, err
-	}
-	return marshalled["merchant"], nil
+	err = c.executeRequestAndMarshal(req, &marshalled)
+	return marshalled["merchant"], err
 }
 
-func (c Client) setContentHeader(req *http.Request) {
-	req.SetBasicAuth("", c.Key)
-	req.Header.Set("Content-Type", "application/json")
-}
-
+// fetchMerchants handles the underlying logic of executing the API requests
+// towards the merchant fetching API
 func (c Client) fetchMerchants(appID string, limit int) ([]*Merchant, error) {
 	path := fmt.Sprintf("/identities/%s/merchants?limit=%d", appID, limit)
 	req, err := http.NewRequest("GET", c.getURL(path), nil)
 	if err != nil {
 		return nil, err
 	}
-	c.setContentHeader(req)
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
 	var marshalled []*Merchant
-	if err := json.Unmarshal(b, &marshalled); err != nil {
-		return nil, err
-	}
-	return marshalled, nil
+	return marshalled, c.executeRequestAndMarshal(req, &marshalled)
 }
 
+// getMerchant handles the underlying logic of executing the API requests
+// towards the merchant API and gets a merchant based on it's ID
 func (c Client) getMerchant(id string) (*Merchant, error) {
 	path := fmt.Sprintf("/merchants/%s", id)
 	req, err := http.NewRequest("GET", c.getURL(path), nil)
 	if err != nil {
 		return nil, err
 	}
-	c.setContentHeader(req)
+	var marshalled map[string]*Merchant
+	err = c.executeRequestAndMarshal(req, &marshalled)
+	return marshalled["merchant"], err
+}
+
+// executeRequestAndMarshal sets the correct headers, then executes the request and tries to marshal
+// the response from the body into the given interface{} value
+func (c Client) executeRequestAndMarshal(req *http.Request, value interface{}) error {
+	req.SetBasicAuth("", c.Key)
+	req.Header.Set("Content-Type", "application/json")
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer resp.Body.Close()
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	var marshalled map[string]*Merchant
-	if err := json.Unmarshal(b, &marshalled); err != nil {
-		return nil, err
-	}
-	return marshalled["merchant"], nil
+	return json.Unmarshal(b, &value)
 }
 
 // temporary function

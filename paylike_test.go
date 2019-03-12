@@ -81,6 +81,5 @@ func TestFetchMerchants(t *testing.T) {
 	merchants, err := client.FetchMerchants(app.ID, 5)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, merchants)
-
 	assert.Equal(t, merchant, merchants[0])
 }
