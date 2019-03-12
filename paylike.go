@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
+
+	"github.com/davecgh/go-spew/spew"
 )
 
 // Client describes all information regarding the API
@@ -153,6 +156,18 @@ func (c Client) CreateMerchant(dto MerchantCreateDTO) (*Merchant, error) {
 	return c.createMerchant(bytes.NewBuffer(b))
 }
 
+// GetMerchant ...
+// https://github.com/paylike/api-docs#fetch-a-merchant
+func (c Client) GetMerchant(id string) (*Merchant, error) {
+	return c.getMerchant(id)
+}
+
+// FetchMerchants ...
+// https://github.com/paylike/api-docs#fetch-all-merchants
+func (c Client) FetchMerchants(appID string, limit int) ([]*Merchant, error) {
+	return c.fetchMerchants(appID, limit)
+}
+
 // getURL is to build the base API url along with the given dynamic route path
 func (c Client) getURL(url string) string {
 	return fmt.Sprintf("%s%s", c.baseAPI, url)
@@ -164,6 +179,7 @@ func (c Client) createApp(body io.Reader) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
@@ -182,11 +198,12 @@ func (c Client) getCurrentApp() (*Identity, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.SetBasicAuth("", c.Key)
+	c.setContentHeader(req)
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
@@ -205,12 +222,12 @@ func (c Client) createMerchant(body io.Reader) (*Merchant, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.SetBasicAuth("", c.Key)
-	req.Header.Set("Content-Type", "application/json")
+	c.setContentHeader(req)
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
@@ -220,4 +237,64 @@ func (c Client) createMerchant(body io.Reader) (*Merchant, error) {
 		return nil, err
 	}
 	return marshalled["merchant"], nil
+}
+
+func (c Client) setContentHeader(req *http.Request) {
+	req.SetBasicAuth("", c.Key)
+	req.Header.Set("Content-Type", "application/json")
+}
+
+func (c Client) fetchMerchants(appID string, limit int) ([]*Merchant, error) {
+	path := fmt.Sprintf("/identities/%s/merchants?limit=%d", appID, limit)
+	req, err := http.NewRequest("GET", c.getURL(path), nil)
+	if err != nil {
+		return nil, err
+	}
+	c.setContentHeader(req)
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	var marshalled []*Merchant
+	if err := json.Unmarshal(b, &marshalled); err != nil {
+		return nil, err
+	}
+	return marshalled, nil
+}
+
+func (c Client) getMerchant(id string) (*Merchant, error) {
+	path := fmt.Sprintf("/merchants/%s", id)
+	req, err := http.NewRequest("GET", c.getURL(path), nil)
+	if err != nil {
+		return nil, err
+	}
+	c.setContentHeader(req)
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	var marshalled map[string]*Merchant
+	if err := json.Unmarshal(b, &marshalled); err != nil {
+		return nil, err
+	}
+	return marshalled["merchant"], nil
+}
+
+// temporary function
+func (c Client) exploreAPI(b []byte) {
+	var t interface{}
+	if err := json.Unmarshal(b, &t); err != nil {
+		log.Fatal(err)
+	}
+	spew.Dump(t)
 }

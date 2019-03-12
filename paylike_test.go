@@ -57,3 +57,30 @@ func TestCreateMerchant(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotEmpty(t, merchant)
 }
+
+func TestFetchMerchants(t *testing.T) {
+	client := NewClient(TestKey)
+	app, err := client.CreateApp()
+	assert.Nil(t, err)
+	assert.NotEmpty(t, app)
+
+	dto := MerchantCreateDTO{
+		Test:       true,
+		Currency:   "HUF",
+		Email:      TestEmail,
+		Website:    TestSite,
+		Descriptor: "1234567897891234",
+		Company: &MerchantCompany{
+			Country: "HU",
+		},
+	}
+	merchant, err := client.SetKey(app.Key).CreateMerchant(dto)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, merchant)
+
+	merchants, err := client.FetchMerchants(app.ID, 5)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, merchants)
+
+	assert.Equal(t, merchant, merchants[0])
+}
