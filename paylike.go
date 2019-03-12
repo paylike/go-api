@@ -36,14 +36,22 @@ type Identity struct {
 
 // MerchantCreateDTO describes options for creating a merchant
 type MerchantCreateDTO struct {
-	Name       string           `json:"name,omitempty"` // optional
+	Name       string           `json:"name,omitempty"` // optional, name of merchant
 	Currency   string           `json:"currency"`       // required, three letter ISO
 	Test       bool             `json:"test,omitempty"` // optional, defaults to false
 	Email      string           `json:"email"`          // required, contact email
 	Website    string           `json:"website"`        // required, website with implementation
 	Descriptor string           `json:"descriptor"`     // required, text on client bank statements
-	Company    *MerchantCompany `json:"company"`        // required
-	Bank       *MerchantBank    `json:"bank,omitempty"` // optional
+	Company    *MerchantCompany `json:"company"`        // required, company information
+	Bank       *MerchantBank    `json:"bank,omitempty"` // optional, bank information
+}
+
+// MerchantUpdateDTO describes options to update a given merchant
+// If you cannot find your desired option here, create a new merchant instead
+type MerchantUpdateDTO struct {
+	Name       string `json:"name,omitempty"`       // optional, name of merchant
+	Email      string `json:"email,omitempty"`      // optional, contact email
+	Descriptor string `json:"descriptor,omitempty"` // optional, text on client bank statements
 }
 
 // Amount ...
@@ -78,6 +86,7 @@ type MerchantTDS struct {
 // Merchant ...
 type Merchant struct {
 	ID         string
+	Name       string
 	Company    MerchantCompany
 	Claim      MerchantClaim
 	Pricing    MerchantPricing
@@ -168,6 +177,16 @@ func (c Client) FetchMerchants(appID string, limit int) ([]*Merchant, error) {
 	return c.fetchMerchants(appID, limit)
 }
 
+// UpdateMerchant updates a merchant with given parameters
+// https://github.com/paylike/api-docs#update-a-merchant
+func (c Client) UpdateMerchant(id string, dto MerchantUpdateDTO) error {
+	b, err := json.Marshal(dto)
+	if err != nil {
+		return err
+	}
+	return c.updateMerchant(id, bytes.NewBuffer(b))
+}
+
 // getURL is to build the base API url along with the given dynamic route path
 func (c Client) getURL(url string) string {
 	return fmt.Sprintf("%s%s", c.baseAPI, url)
@@ -234,6 +253,17 @@ func (c Client) getMerchant(id string) (*Merchant, error) {
 	return marshalled["merchant"], err
 }
 
+// updateMerchant handles the underlying logic of executing the API requests
+// towards the merchant API and updates a given merchant
+func (c Client) updateMerchant(id string, body io.Reader) error {
+	path := fmt.Sprintf("/merchants/%s", id)
+	req, err := http.NewRequest("PUT", c.getURL(path), body)
+	if err != nil {
+		return nil
+	}
+	return c.executeRequestAndMarshal(req, nil)
+}
+
 // executeRequestAndMarshal sets the correct headers, then executes the request and tries to marshal
 // the response from the body into the given interface{} value
 func (c Client) executeRequestAndMarshal(req *http.Request, value interface{}) error {
@@ -244,10 +274,16 @@ func (c Client) executeRequestAndMarshal(req *http.Request, value interface{}) e
 		return err
 	}
 	defer resp.Body.Close()
+	// Skip marshaling if the interface value is nil to avoid
+	// unnecessary errors
+	if value == nil {
+		return nil
+	}
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
+	// c.exploreAPI(b)
 	return json.Unmarshal(b, &value)
 }
 
