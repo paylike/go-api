@@ -6,10 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 // Client describes all information regarding the API
@@ -52,6 +49,12 @@ type MerchantUpdateDTO struct {
 	Name       string `json:"name,omitempty"`       // optional, name of merchant
 	Email      string `json:"email,omitempty"`      // optional, contact email
 	Descriptor string `json:"descriptor,omitempty"` // optional, text on client bank statements
+}
+
+// InviteUserToMerchantResponse describes the response when a user
+// is being invited to a given merchant
+type InviteUserToMerchantResponse struct {
+	IsMember bool
 }
 
 // Amount ...
@@ -110,6 +113,12 @@ type MerchantClaim struct {
 	CanCapture        bool
 	CanRefund         bool
 	CanVoid           bool
+}
+
+// User describes a user in the system
+type User struct {
+	ID    string `json:"id"`
+	Email string `json:"email"`
 }
 
 // MerchantCompany ...
@@ -175,6 +184,18 @@ func (c Client) GetMerchant(id string) (*Merchant, error) {
 // https://github.com/paylike/api-docs#fetch-all-merchants
 func (c Client) FetchMerchants(appID string, limit int) ([]*Merchant, error) {
 	return c.fetchMerchants(appID, limit)
+}
+
+// InviteUserToMerchant invites given user to use the given merchant account
+// https://github.com/paylike/api-docs#invite-user-to-a-merchant
+func (c Client) InviteUserToMerchant(merchantID string, email string) (*InviteUserToMerchantResponse, error) {
+	return c.inviteUserToMerchant(merchantID, email)
+}
+
+// FetchUsersToMerchant fetches users for a given merchant
+// https://github.com/paylike/api-docs#fetch-all-users-on-a-merchant
+func (c Client) FetchUsersToMerchant(merchantID string, limit int) ([]*User, error) {
+	return c.fetchUsersToMerchant(merchantID, limit)
 }
 
 // UpdateMerchant updates a merchant with given parameters
@@ -264,6 +285,34 @@ func (c Client) updateMerchant(id string, body io.Reader) error {
 	return c.executeRequestAndMarshal(req, nil)
 }
 
+// inviteUserToMerchant handles the underlying logic of executing the API requests
+// towards the merchant API and invites a given user in the system
+// to use the given merchant
+func (c Client) inviteUserToMerchant(id string, email string) (*InviteUserToMerchantResponse, error) {
+	path := fmt.Sprintf("/merchants/%s/users", id)
+	data := []byte(fmt.Sprintf(`{"email":"%s"}`, email))
+	req, err := http.NewRequest("POST", c.getURL(path), bytes.NewBuffer(data))
+	if err != nil {
+		return nil, nil
+	}
+	var marshalled InviteUserToMerchantResponse
+	err = c.executeRequestAndMarshal(req, &marshalled)
+	return &marshalled, err
+}
+
+// fetchUsersToMerchant handles the underlying logic of executing the API requests
+// towards the merchant API and lists all users that are related for the given merchant
+// curl -i https://api.paylike.io/merchants/<merchant-id>/users?limit=<num> \
+func (c Client) fetchUsersToMerchant(id string, limit int) ([]*User, error) {
+	path := fmt.Sprintf("/merchants/%s/users?limit=%d", id, limit)
+	req, err := http.NewRequest("GET", c.getURL(path), nil)
+	if err != nil {
+		return nil, nil
+	}
+	var marshalled []*User
+	return marshalled, c.executeRequestAndMarshal(req, &marshalled)
+}
+
 // executeRequestAndMarshal sets the correct headers, then executes the request and tries to marshal
 // the response from the body into the given interface{} value
 func (c Client) executeRequestAndMarshal(req *http.Request, value interface{}) error {
@@ -274,24 +323,18 @@ func (c Client) executeRequestAndMarshal(req *http.Request, value interface{}) e
 		return err
 	}
 	defer resp.Body.Close()
-	// Skip marshaling if the interface value is nil to avoid
-	// unnecessary errors
-	if value == nil {
-		return nil
-	}
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
-	// c.exploreAPI(b)
+	if len(b) == 0 {
+		return nil
+	}
 	return json.Unmarshal(b, &value)
 }
 
-// temporary function
-func (c Client) exploreAPI(b []byte) {
-	var t interface{}
-	if err := json.Unmarshal(b, &t); err != nil {
-		log.Fatal(err)
-	}
-	spew.Dump(t)
+// Temporary function
+func (c Client) exploreResponse(resp *http.Response, b []byte) {
+	fmt.Println(resp.Status)
+	fmt.Println(string(b))
 }
