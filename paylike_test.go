@@ -241,3 +241,90 @@ func TestRevokeUserFromMerchant(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Empty(t, users)
 }
+
+func TestAddAppToMerchant(t *testing.T) {
+	client := NewClient(TestKey)
+	app, err := client.CreateApp()
+	assert.Nil(t, err)
+	assert.NotEmpty(t, app)
+
+	dto := MerchantCreateDTO{
+		Name:       "NotTest",
+		Test:       true,
+		Currency:   "HUF",
+		Email:      TestEmail,
+		Website:    TestSite,
+		Descriptor: "1234567897891234",
+		Company: &MerchantCompany{
+			Country: "HU",
+		},
+	}
+	merchant, err := client.SetKey(app.Key).CreateMerchant(dto)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, merchant)
+
+	err = client.AddAppToMerchant(merchant.ID, app.ID)
+	assert.Nil(t, err)
+}
+
+func TestFetchAppsToMerchant(t *testing.T) {
+	client := NewClient(TestKey)
+	app, err := client.CreateApp()
+	assert.Nil(t, err)
+	assert.NotEmpty(t, app)
+
+	dto := MerchantCreateDTO{
+		Name:       "NotTest",
+		Test:       true,
+		Currency:   "HUF",
+		Email:      TestEmail,
+		Website:    TestSite,
+		Descriptor: "1234567897891234",
+		Company: &MerchantCompany{
+			Country: "HU",
+		},
+	}
+	merchant, err := client.SetKey(app.Key).CreateMerchant(dto)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, merchant)
+
+	err = client.AddAppToMerchant(merchant.ID, app.ID)
+	assert.Nil(t, err)
+
+	apps, err := client.FetchAppsToMerchant(merchant.ID, 2)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, apps)
+	assert.Equal(t, app, apps[0])
+}
+
+func TestRevokeAppFromMerchant(t *testing.T) {
+	client := NewClient(TestKey)
+	app, err := client.CreateApp()
+	assert.Nil(t, err)
+	assert.NotEmpty(t, app)
+
+	dto := MerchantCreateDTO{
+		Name:       "NotTest",
+		Test:       true,
+		Currency:   "HUF",
+		Email:      TestEmail,
+		Website:    TestSite,
+		Descriptor: "1234567897891234",
+		Company: &MerchantCompany{
+			Country: "HU",
+		},
+	}
+	merchant, err := client.SetKey(app.Key).CreateMerchant(dto)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, merchant)
+
+	err = client.AddAppToMerchant(merchant.ID, app.ID)
+	assert.Nil(t, err)
+
+	err = client.RevokeAppFromMerchant(merchant.ID, app.ID)
+	assert.Nil(t, err)
+
+	apps, err := client.FetchAppsToMerchant(merchant.ID, 2)
+	assert.Nil(t, err)
+	assert.Empty(t, apps)
+}

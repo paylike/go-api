@@ -186,6 +186,16 @@ func (c Client) FetchMerchants(appID string, limit int) ([]*Merchant, error) {
 	return c.fetchMerchants(appID, limit)
 }
 
+// UpdateMerchant updates a merchant with given parameters
+// https://github.com/paylike/api-docs#update-a-merchant
+func (c Client) UpdateMerchant(id string, dto MerchantUpdateDTO) error {
+	b, err := json.Marshal(dto)
+	if err != nil {
+		return err
+	}
+	return c.updateMerchant(id, bytes.NewBuffer(b))
+}
+
 // InviteUserToMerchant invites given user to use the given merchant account
 // https://github.com/paylike/api-docs#invite-user-to-a-merchant
 func (c Client) InviteUserToMerchant(merchantID string, email string) (*InviteUserToMerchantResponse, error) {
@@ -204,14 +214,22 @@ func (c Client) RevokeUserFromMerchant(merchantID string, userID string) error {
 	return c.revokeUserFromMerchant(merchantID, userID)
 }
 
-// UpdateMerchant updates a merchant with given parameters
-// https://github.com/paylike/api-docs#update-a-merchant
-func (c Client) UpdateMerchant(id string, dto MerchantUpdateDTO) error {
-	b, err := json.Marshal(dto)
-	if err != nil {
-		return err
-	}
-	return c.updateMerchant(id, bytes.NewBuffer(b))
+// AddAppToMerchant revokes a given user from a given merchant
+// https://github.com/paylike/api-docs#add-app-to-a-merchant
+func (c Client) AddAppToMerchant(merchantID string, appID string) error {
+	return c.addAppToMerchant(merchantID, appID)
+}
+
+// FetchAppsToMerchant fetches apps for a given merchant
+// https://github.com/paylike/api-docs#fetch-all-apps-on-a-merchant
+func (c Client) FetchAppsToMerchant(merchantID string, limit int) ([]*App, error) {
+	return c.fetchAppsToMerchant(merchantID, limit)
+}
+
+// RevokeAppFromMerchant revokes a given app from a given merchant
+// https://github.com/paylike/api-docs#revoke-app-from-a-merchant
+func (c Client) RevokeAppFromMerchant(merchantID string, appID string) error {
+	return c.revokeAppFromMerchant(merchantID, appID)
 }
 
 // getURL is to build the base API url along with the given dynamic route path
@@ -295,8 +313,8 @@ func (c Client) updateMerchant(id string, body io.Reader) error {
 // towards the merchant API and invites a given user in the system
 // to use the given merchant
 func (c Client) inviteUserToMerchant(id string, email string) (*InviteUserToMerchantResponse, error) {
-	path := fmt.Sprintf("/merchants/%s/users", id)
 	data := []byte(fmt.Sprintf(`{"email":"%s"}`, email))
+	path := fmt.Sprintf("/merchants/%s/users", id)
 	req, err := http.NewRequest("POST", c.getURL(path), bytes.NewBuffer(data))
 	if err != nil {
 		return nil, nil
@@ -329,6 +347,41 @@ func (c Client) revokeUserFromMerchant(merchantID string, userID string) error {
 	return c.executeRequestAndMarshal(req, nil)
 }
 
+// addAppToMerchant handles the underlying logic of executing the API requests
+// towards the merchant API and adds the given app to the given merchant
+func (c Client) addAppToMerchant(merchantID string, appID string) error {
+	data := []byte(fmt.Sprintf(`{"appId":"%s"}`, appID))
+	path := fmt.Sprintf("/merchants/%s/apps", merchantID)
+	req, err := http.NewRequest("POST", c.getURL(path), bytes.NewBuffer(data))
+	if err != nil {
+		return err
+	}
+	return c.executeRequestAndMarshal(req, nil)
+}
+
+// fetchAppsToMerchant handles the underlying logic of executing the API requests
+// towards the merchant API and lists all apps related to the merchant
+func (c Client) fetchAppsToMerchant(merchantID string, limit int) ([]*App, error) {
+	path := fmt.Sprintf("/merchants/%s/apps?limit=%d", merchantID, limit)
+	req, err := http.NewRequest("GET", c.getURL(path), nil)
+	if err != nil {
+		return nil, err
+	}
+	var marshalled []*App
+	return marshalled, c.executeRequestAndMarshal(req, &marshalled)
+}
+
+// revokeAppFromMerchant handles the underlying logic of executing the API requests
+// towards the merchant API and revokes a given app from a given merchant
+func (c Client) revokeAppFromMerchant(merchantID string, appID string) error {
+	path := fmt.Sprintf("/merchants/%s/apps/%s", merchantID, appID)
+	req, err := http.NewRequest("DELETE", c.getURL(path), nil)
+	if err != nil {
+		return err
+	}
+	return c.executeRequestAndMarshal(req, nil)
+}
+
 // executeRequestAndMarshal sets the correct headers, then executes the request and tries to marshal
 // the response from the body into the given interface{} value
 func (c Client) executeRequestAndMarshal(req *http.Request, value interface{}) error {
@@ -343,6 +396,7 @@ func (c Client) executeRequestAndMarshal(req *http.Request, value interface{}) e
 	if err != nil {
 		return err
 	}
+	c.exploreResponse(resp, b)
 	if len(b) == 0 {
 		return nil
 	}
