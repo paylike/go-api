@@ -336,3 +336,16 @@ func TestFetchLinesToMerchant(t *testing.T) {
 	assert.NotEmpty(t, lines)
 	assert.Len(t, lines, 1)
 }
+
+func TestCreateTransaction(t *testing.T) {
+	client := NewClient(TestKey).SetKey("4ff7de37-dddf-4e51-8cc9-48b61a102923")
+	dto := TransactionDTO{
+		TransactionID: "560fd96b7973ff3d2362a78c",
+		Currency:      "EUR",
+		Amount:        200,
+		Custom:        struct{ Source string }{"go client test"},
+	}
+	data, err := client.CreateTransaction("55006bdfe0308c4cbfdbd0e1", dto)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, data)
+}

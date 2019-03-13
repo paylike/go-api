@@ -145,6 +145,22 @@ type Line struct {
 	Test          bool   `json:"test"`
 }
 
+// TransactionDTO describes options in terms of the transaction
+// creation API
+type TransactionDTO struct {
+	TransactionID string      `json:"transactionId"`        // required
+	Descriptor    string      `json:"descriptor,omitempty"` // optional, will fallback to merchant descriptor
+	Currency      string      `json:"currency"`             // required, three letter ISO
+	Amount        int         `json:"amount"`               // required, amount in minor units
+	Custom        interface{} `json:"custom,omitempty"`     // optional, any custom data
+
+}
+
+// TransactionID describes the ID for a given unique transaction used for referencing
+type TransactionID struct {
+	ID string `json:"id"`
+}
+
 // NewClient creates a new client
 func NewClient(key string) *Client {
 	return &Client{key, &http.Client{}, "https://api.paylike.io"}
@@ -249,6 +265,16 @@ func (c Client) RevokeAppFromMerchant(merchantID string, appID string) error {
 // https://github.com/paylike/api-docs#merchants-lines
 func (c Client) FetchLinesToMerchant(merchantID string, limit int) ([]*Line, error) {
 	return c.fetchLinesToMerchant(merchantID, limit)
+}
+
+// CreateTransaction creates a new transaction based on previous transaction informations
+// https://github.com/paylike/api-docs#using-a-previous-transaction
+func (c Client) CreateTransaction(merchantID string, dto TransactionDTO) (*TransactionID, error) {
+	b, err := json.Marshal(dto)
+	if err != nil {
+		return nil, err
+	}
+	return c.createTransaction(merchantID, bytes.NewBuffer(b))
 }
 
 // getURL is to build the base API url along with the given dynamic route path
@@ -411,6 +437,18 @@ func (c Client) fetchLinesToMerchant(merchantID string, limit int) ([]*Line, err
 	}
 	var marshalled []*Line
 	return marshalled, c.executeRequestAndMarshal(req, &marshalled)
+}
+
+// createTransaction handles the underlying logic of executing the API requests
+// towards the merchant API and creates a new transaction
+func (c Client) createTransaction(merchantID string, body io.Reader) (*TransactionID, error) {
+	path := fmt.Sprintf("/merchants/%s/transactions", merchantID)
+	req, err := http.NewRequest("POST", c.getURL(path), body)
+	if err != nil {
+		return nil, err
+	}
+	var marshalled map[string]*TransactionID
+	return marshalled["transaction"], c.executeRequestAndMarshal(req, &marshalled)
 }
 
 // executeRequestAndMarshal sets the correct headers, then executes the request and tries to marshal
