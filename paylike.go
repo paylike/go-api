@@ -198,6 +198,12 @@ func (c Client) FetchUsersToMerchant(merchantID string, limit int) ([]*User, err
 	return c.fetchUsersToMerchant(merchantID, limit)
 }
 
+// RevokeUserFromMerchant revokes a given user from a given merchant
+// https://github.com/paylike/api-docs#revoke-user-from-a-merchant
+func (c Client) RevokeUserFromMerchant(merchantID string, userID string) error {
+	return c.revokeUserFromMerchant(merchantID, userID)
+}
+
 // UpdateMerchant updates a merchant with given parameters
 // https://github.com/paylike/api-docs#update-a-merchant
 func (c Client) UpdateMerchant(id string, dto MerchantUpdateDTO) error {
@@ -302,7 +308,6 @@ func (c Client) inviteUserToMerchant(id string, email string) (*InviteUserToMerc
 
 // fetchUsersToMerchant handles the underlying logic of executing the API requests
 // towards the merchant API and lists all users that are related for the given merchant
-// curl -i https://api.paylike.io/merchants/<merchant-id>/users?limit=<num> \
 func (c Client) fetchUsersToMerchant(id string, limit int) ([]*User, error) {
 	path := fmt.Sprintf("/merchants/%s/users?limit=%d", id, limit)
 	req, err := http.NewRequest("GET", c.getURL(path), nil)
@@ -311,6 +316,17 @@ func (c Client) fetchUsersToMerchant(id string, limit int) ([]*User, error) {
 	}
 	var marshalled []*User
 	return marshalled, c.executeRequestAndMarshal(req, &marshalled)
+}
+
+// revokeUserFromMerchant handles the underlying logic of executing the API requests
+// towards the merchant API and revokes a given user from a given merchant
+func (c Client) revokeUserFromMerchant(merchantID string, userID string) error {
+	path := fmt.Sprintf("/merchants/%s/users/%s", merchantID, userID)
+	req, err := http.NewRequest("DELETE", c.getURL(path), nil)
+	if err != nil {
+		return err
+	}
+	return c.executeRequestAndMarshal(req, nil)
 }
 
 // executeRequestAndMarshal sets the correct headers, then executes the request and tries to marshal

@@ -203,3 +203,41 @@ func TestFetchUsersToMerchant(t *testing.T) {
 	assert.NotEmpty(t, users)
 	assert.Equal(t, "one@example.com", users[0].Email)
 }
+
+func TestRevokeUserFromMerchant(t *testing.T) {
+	client := NewClient(TestKey)
+	app, err := client.CreateApp()
+	assert.Nil(t, err)
+	assert.NotEmpty(t, app)
+
+	dto := MerchantCreateDTO{
+		Name:       "NotTest",
+		Test:       true,
+		Currency:   "HUF",
+		Email:      TestEmail,
+		Website:    TestSite,
+		Descriptor: "1234567897891234",
+		Company: &MerchantCompany{
+			Country: "HU",
+		},
+	}
+	merchant, err := client.SetKey(app.Key).CreateMerchant(dto)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, merchant)
+
+	data, err := client.InviteUserToMerchant(merchant.ID, "one@example.com")
+	assert.Nil(t, err)
+	assert.False(t, data.IsMember)
+
+	users, err := client.FetchUsersToMerchant(merchant.ID, 3)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, users)
+	assert.Equal(t, "one@example.com", users[0].Email)
+
+	err = client.RevokeUserFromMerchant(merchant.ID, users[0].ID)
+	assert.Nil(t, err)
+
+	users, err = client.FetchUsersToMerchant(merchant.ID, 3)
+	assert.Nil(t, err)
+	assert.Empty(t, users)
+}
