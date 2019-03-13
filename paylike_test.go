@@ -328,3 +328,11 @@ func TestRevokeAppFromMerchant(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Empty(t, apps)
 }
+
+func TestFetchLinesToMerchant(t *testing.T) {
+	client := NewClient(TestKey).SetKey("4ff7de37-dddf-4e51-8cc9-48b61a102923")
+	lines, err := client.FetchLinesToMerchant("55006bdfe0308c4cbfdbd0e1", 1)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, lines)
+	assert.Len(t, lines, 1)
+}

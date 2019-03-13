@@ -132,6 +132,19 @@ type MerchantBank struct {
 	Iban string `json:"iban,omitempty"` // optional, (format: XX00000000, XX is country code, length varies)
 }
 
+// Line desccribes a given item in the history of the merchant balance
+type Line struct {
+	ID            string `json:"id"`
+	Created       string `json:"created"`
+	MerchantID    string `json:"merchantId"`
+	Balance       int    `json:"balance"`
+	Fee           int    `json:"fee"`
+	TransactionID string `json:"transactionId"`
+	Amount        Amount `json:"amount"`
+	Refund        bool   `json:"refund"`
+	Test          bool   `json:"test"`
+}
+
 // NewClient creates a new client
 func NewClient(key string) *Client {
 	return &Client{key, &http.Client{}, "https://api.paylike.io"}
@@ -230,6 +243,12 @@ func (c Client) FetchAppsToMerchant(merchantID string, limit int) ([]*App, error
 // https://github.com/paylike/api-docs#revoke-app-from-a-merchant
 func (c Client) RevokeAppFromMerchant(merchantID string, appID string) error {
 	return c.revokeAppFromMerchant(merchantID, appID)
+}
+
+// FetchLinesToMerchant fetches the history that makes up a given merchant's balance
+// https://github.com/paylike/api-docs#merchants-lines
+func (c Client) FetchLinesToMerchant(merchantID string, limit int) ([]*Line, error) {
+	return c.fetchLinesToMerchant(merchantID, limit)
 }
 
 // getURL is to build the base API url along with the given dynamic route path
@@ -380,6 +399,18 @@ func (c Client) revokeAppFromMerchant(merchantID string, appID string) error {
 		return err
 	}
 	return c.executeRequestAndMarshal(req, nil)
+}
+
+// fetchLinesToMerchant handles the underlying logic of executing the API requests
+// towards the merchant API and fetches all lines related to a merchant's history
+func (c Client) fetchLinesToMerchant(merchantID string, limit int) ([]*Line, error) {
+	path := fmt.Sprintf("/merchants/%s/lines?limit=%d", merchantID, limit)
+	req, err := http.NewRequest("GET", c.getURL(path), nil)
+	if err != nil {
+		return nil, err
+	}
+	var marshalled []*Line
+	return marshalled, c.executeRequestAndMarshal(req, &marshalled)
 }
 
 // executeRequestAndMarshal sets the correct headers, then executes the request and tries to marshal
