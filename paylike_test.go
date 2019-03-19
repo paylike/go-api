@@ -7,12 +7,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const TestKey = "4c8453c3-8285-4984-ab72-216e324372e6"
+const TestKey = "4ff7de37-dddf-4e51-8cc9-48b61a102923"
 const TestEmail = "john@example.com"
 const TestSite = "https://example.com"
+const TestMerchant = "55006bdfe0308c4cbfdbd0e1"
 
 func TestCreateApp(t *testing.T) {
-	client := NewClient(TestKey)
+	client := NewClient("")
 	app, err := client.CreateApp()
 	assert.Nil(t, err)
 	assert.NotEmpty(t, app)
@@ -20,7 +21,7 @@ func TestCreateApp(t *testing.T) {
 }
 
 func TestCreateAppWithName(t *testing.T) {
-	client := NewClient(TestKey)
+	client := NewClient("")
 	app, err := client.CreateAppWithName("Macilaci")
 	assert.Nil(t, err)
 	assert.NotEmpty(t, app)
@@ -28,18 +29,18 @@ func TestCreateAppWithName(t *testing.T) {
 }
 
 func TestGetApp(t *testing.T) {
-	client := NewClient(TestKey)
+	client := NewClient("")
 	app, err := client.CreateApp()
 	assert.Nil(t, err)
 	assert.NotEmpty(t, app)
 
-	identity, err := client.SetKey(app.Key).GetCurrentApp()
+	identity, err := client.SetKey(app.Key).FetchApp()
 	assert.Nil(t, err)
 	assert.NotEmpty(t, identity)
 }
 
 func TestCreateMerchant(t *testing.T) {
-	client := NewClient(TestKey)
+	client := NewClient("")
 	app, err := client.CreateApp()
 	assert.Nil(t, err)
 	assert.NotEmpty(t, app)
@@ -60,7 +61,7 @@ func TestCreateMerchant(t *testing.T) {
 }
 
 func TestFetchMerchants(t *testing.T) {
-	client := NewClient(TestKey)
+	client := NewClient("")
 	app, err := client.CreateApp()
 	assert.Nil(t, err)
 	assert.NotEmpty(t, app)
@@ -86,7 +87,7 @@ func TestFetchMerchants(t *testing.T) {
 }
 
 func TestGetMerchant(t *testing.T) {
-	client := NewClient(TestKey)
+	client := NewClient("")
 	app, err := client.CreateApp()
 	assert.Nil(t, err)
 	assert.NotEmpty(t, app)
@@ -112,7 +113,7 @@ func TestGetMerchant(t *testing.T) {
 }
 
 func TestUpdateMerchant(t *testing.T) {
-	client := NewClient(TestKey)
+	client := NewClient("")
 	app, err := client.CreateApp()
 	assert.Nil(t, err)
 	assert.NotEmpty(t, app)
@@ -148,7 +149,7 @@ func TestUpdateMerchant(t *testing.T) {
 }
 
 func TestInviteUserToMerchant(t *testing.T) {
-	client := NewClient(TestKey)
+	client := NewClient("")
 	app, err := client.CreateApp()
 	assert.Nil(t, err)
 	assert.NotEmpty(t, app)
@@ -174,7 +175,7 @@ func TestInviteUserToMerchant(t *testing.T) {
 }
 
 func TestFetchUsersToMerchant(t *testing.T) {
-	client := NewClient(TestKey)
+	client := NewClient("")
 	app, err := client.CreateApp()
 	assert.Nil(t, err)
 	assert.NotEmpty(t, app)
@@ -205,7 +206,7 @@ func TestFetchUsersToMerchant(t *testing.T) {
 }
 
 func TestRevokeUserFromMerchant(t *testing.T) {
-	client := NewClient(TestKey)
+	client := NewClient("")
 	app, err := client.CreateApp()
 	assert.Nil(t, err)
 	assert.NotEmpty(t, app)
@@ -243,7 +244,7 @@ func TestRevokeUserFromMerchant(t *testing.T) {
 }
 
 func TestAddAppToMerchant(t *testing.T) {
-	client := NewClient(TestKey)
+	client := NewClient("")
 	app, err := client.CreateApp()
 	assert.Nil(t, err)
 	assert.NotEmpty(t, app)
@@ -268,7 +269,7 @@ func TestAddAppToMerchant(t *testing.T) {
 }
 
 func TestFetchAppsToMerchant(t *testing.T) {
-	client := NewClient(TestKey)
+	client := NewClient("")
 	app, err := client.CreateApp()
 	assert.Nil(t, err)
 	assert.NotEmpty(t, app)
@@ -298,7 +299,7 @@ func TestFetchAppsToMerchant(t *testing.T) {
 }
 
 func TestRevokeAppFromMerchant(t *testing.T) {
-	client := NewClient(TestKey)
+	client := NewClient("")
 	app, err := client.CreateApp()
 	assert.Nil(t, err)
 	assert.NotEmpty(t, app)
@@ -330,43 +331,43 @@ func TestRevokeAppFromMerchant(t *testing.T) {
 }
 
 func TestFetchLinesToMerchant(t *testing.T) {
-	client := NewClient(TestKey).SetKey("4ff7de37-dddf-4e51-8cc9-48b61a102923")
-	lines, err := client.FetchLinesToMerchant("55006bdfe0308c4cbfdbd0e1", 1)
+	client := NewClient(TestKey)
+	lines, err := client.FetchLinesToMerchant(TestMerchant, 1)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, lines)
 	assert.Len(t, lines, 1)
 }
 
 func TestCreateTransaction(t *testing.T) {
-	client := NewClient(TestKey).SetKey("4ff7de37-dddf-4e51-8cc9-48b61a102923")
+	client := NewClient(TestKey)
 	dto := TransactionDTO{
 		TransactionID: "560fd96b7973ff3d2362a78c",
 		Currency:      "EUR",
 		Amount:        200,
 		Custom:        map[string]interface{}{"source": "test"},
 	}
-	data, err := client.CreateTransaction("55006bdfe0308c4cbfdbd0e1", dto)
+	data, err := client.CreateTransaction(TestMerchant, dto)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, data)
 }
 
 func TestListTransactions(t *testing.T) {
-	client := NewClient(TestKey).SetKey("4ff7de37-dddf-4e51-8cc9-48b61a102923")
-	transactions, err := client.ListTransactions("55006bdfe0308c4cbfdbd0e1", 20)
+	client := NewClient(TestKey)
+	transactions, err := client.ListTransactions(TestMerchant, 20)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, transactions)
 	assert.Len(t, transactions, 20)
 }
 
 func TestCaptureTransaction(t *testing.T) {
-	client := NewClient(TestKey).SetKey("4ff7de37-dddf-4e51-8cc9-48b61a102923")
+	client := NewClient(TestKey)
 	transactionDTO := TransactionDTO{
 		TransactionID: "560fd96b7973ff3d2362a78c",
 		Currency:      "EUR",
 		Amount:        200,
 		Custom:        map[string]interface{}{"source": "test"},
 	}
-	data, err := client.CreateTransaction("55006bdfe0308c4cbfdbd0e1", transactionDTO)
+	data, err := client.CreateTransaction(TestMerchant, transactionDTO)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, data)
 
@@ -384,14 +385,14 @@ func TestCaptureTransaction(t *testing.T) {
 }
 
 func TestRefundTransaction(t *testing.T) {
-	client := NewClient(TestKey).SetKey("4ff7de37-dddf-4e51-8cc9-48b61a102923")
+	client := NewClient(TestKey)
 	transactionDTO := TransactionDTO{
 		TransactionID: "560fd96b7973ff3d2362a78c",
 		Currency:      "EUR",
 		Amount:        200,
 		Custom:        map[string]interface{}{"source": "test"},
 	}
-	data, err := client.CreateTransaction("55006bdfe0308c4cbfdbd0e1", transactionDTO)
+	data, err := client.CreateTransaction(TestMerchant, transactionDTO)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, data)
 
@@ -417,14 +418,14 @@ func TestRefundTransaction(t *testing.T) {
 }
 
 func TestVoidTransaction(t *testing.T) {
-	client := NewClient(TestKey).SetKey("4ff7de37-dddf-4e51-8cc9-48b61a102923")
+	client := NewClient(TestKey)
 	transactionDTO := TransactionDTO{
 		TransactionID: "560fd96b7973ff3d2362a78c",
 		Currency:      "EUR",
 		Amount:        200,
 		Custom:        map[string]interface{}{"source": "test"},
 	}
-	data, err := client.CreateTransaction("55006bdfe0308c4cbfdbd0e1", transactionDTO)
+	data, err := client.CreateTransaction(TestMerchant, transactionDTO)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, data)
 
@@ -448,14 +449,14 @@ func TestVoidTransaction(t *testing.T) {
 }
 
 func TestFindTransaction(t *testing.T) {
-	client := NewClient(TestKey).SetKey("4ff7de37-dddf-4e51-8cc9-48b61a102923")
+	client := NewClient(TestKey)
 	transactionDTO := TransactionDTO{
 		TransactionID: "560fd96b7973ff3d2362a78c",
 		Currency:      "EUR",
 		Amount:        200,
 		Custom:        map[string]interface{}{"source": "test"},
 	}
-	data, err := client.CreateTransaction("55006bdfe0308c4cbfdbd0e1", transactionDTO)
+	data, err := client.CreateTransaction(TestMerchant, transactionDTO)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, data)
 
@@ -477,11 +478,11 @@ func TestFindTransaction(t *testing.T) {
 }
 
 func TestFetchCard(t *testing.T) {
-	client := NewClient(TestKey).SetKey("4ff7de37-dddf-4e51-8cc9-48b61a102923")
+	client := NewClient(TestKey)
 	dto := CardDTO{
 		TransactionID: "560fd96b7973ff3d2362a78c",
 	}
-	data, err := client.CreateCard("55006bdfe0308c4cbfdbd0e1", dto)
+	data, err := client.CreateCard(TestMerchant, dto)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, data)
 

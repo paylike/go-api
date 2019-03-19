@@ -57,36 +57,36 @@ type InviteUserToMerchantResponse struct {
 	IsMember bool
 }
 
-// Amount ...
-type Amount struct {
+// PricingAmount describes the currency and the amount
+type PricingAmount struct {
 	Currency string
 	Amount   float64
 }
 
-// MerchantTransfer ...
+// MerchantTransfer describes a transfer to a given card
 type MerchantTransfer struct {
 	ToCard Pricing
 }
 
-// Pricing ...
+// Pricing describes the exact amounts for a given item
 type Pricing struct {
 	Rate    float64
-	Flat    Amount
-	Dispute Amount
+	Flat    PricingAmount
+	Dispute PricingAmount
 }
 
-// MerchantPricing ...
+// MerchantPricing describes a pricing included in the merchant
 type MerchantPricing struct {
 	Pricing
 	Transfer MerchantTransfer
 }
 
-// MerchantTDS ...
+// MerchantTDS either "attempt" or "full" based on 3-D secure
 type MerchantTDS struct {
 	Mode string
 }
 
-// Merchant ...
+// Merchant describes information about a given merchant
 type Merchant struct {
 	ID         string
 	Name       string
@@ -105,7 +105,7 @@ type Merchant struct {
 	Balance    float64
 }
 
-// MerchantClaim ...
+// MerchantClaim describes claims for a given merchant
 type MerchantClaim struct {
 	CanChargeCard     bool
 	CanSaveCard       bool
@@ -121,28 +121,28 @@ type User struct {
 	Email string `json:"email"`
 }
 
-// MerchantCompany ...
+// MerchantCompany describes the company of a given merchant
 type MerchantCompany struct {
 	Country string `json:"country"`          // required, ISO 3166 code (e.g. DK)
 	Number  string `json:"number,omitempty"` // optional, registration number ("CVR" in Denmark)
 }
 
-// MerchantBank ...
+// MerchantBank describes a bank for a given merchant
 type MerchantBank struct {
 	Iban string `json:"iban,omitempty"` // optional, (format: XX00000000, XX is country code, length varies)
 }
 
 // Line desccribes a given item in the history of the merchant balance
 type Line struct {
-	ID            string `json:"id"`
-	Created       string `json:"created"`
-	MerchantID    string `json:"merchantId"`
-	Balance       int    `json:"balance"`
-	Fee           int    `json:"fee"`
-	TransactionID string `json:"transactionId"`
-	Amount        Amount `json:"amount"`
-	Refund        bool   `json:"refund"`
-	Test          bool   `json:"test"`
+	ID            string        `json:"id"`
+	Created       string        `json:"created"`
+	MerchantID    string        `json:"merchantId"`
+	Balance       int           `json:"balance"`
+	Fee           int           `json:"fee"`
+	TransactionID string        `json:"transactionId"`
+	Amount        PricingAmount `json:"amount"`
+	Refund        bool          `json:"refund"`
+	Test          bool          `json:"test"`
 }
 
 // TransactionDTO describes options in terms of the transaction
@@ -276,10 +276,10 @@ func (c Client) CreateAppWithName(name string) (*App, error) {
 	)
 }
 
-// GetCurrentApp is to fetch information about the current application
+// FetchApp is to fetch information about the current application
 // https://api.paylike.io/me
-func (c Client) GetCurrentApp() (*Identity, error) {
-	return c.getCurrentApp()
+func (c Client) FetchApp() (*Identity, error) {
+	return c.fetchApp()
 }
 
 // CreateMerchant creates a new merchant under a given app
@@ -441,9 +441,9 @@ func (c Client) createApp(body io.Reader) (*App, error) {
 	return marshalled["app"], err
 }
 
-// getCurrentApp handles the underlying logic of executing the API requests
+// fetchApp handles the underlying logic of executing the API requests
 // towards the app API to get the currently used app
-func (c Client) getCurrentApp() (*Identity, error) {
+func (c Client) fetchApp() (*Identity, error) {
 	req, err := http.NewRequest("GET", c.getURL("/me"), nil)
 	if err != nil {
 		return nil, err
@@ -696,15 +696,8 @@ func (c Client) executeRequestAndMarshal(req *http.Request, value interface{}) e
 	if err != nil {
 		return err
 	}
-	c.exploreResponse(resp, b)
 	if len(b) == 0 {
 		return nil
 	}
 	return json.Unmarshal(b, &value)
-}
-
-// Temporary function
-func (c Client) exploreResponse(resp *http.Response, b []byte) {
-	fmt.Println(resp.Status)
-	fmt.Println(string(b))
 }
