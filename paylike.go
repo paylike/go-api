@@ -148,17 +148,79 @@ type Line struct {
 // TransactionDTO describes options in terms of the transaction
 // creation API
 type TransactionDTO struct {
-	TransactionID string      `json:"transactionId"`        // required
-	Descriptor    string      `json:"descriptor,omitempty"` // optional, will fallback to merchant descriptor
-	Currency      string      `json:"currency"`             // required, three letter ISO
-	Amount        int         `json:"amount"`               // required, amount in minor units
-	Custom        interface{} `json:"custom,omitempty"`     // optional, any custom data
+	CardID        string            `json:"cardId,omitempty"`        // required if no TransactionID is present
+	TransactionID string            `json:"transactionId,omitempty"` // required if no CardID is present
+	Descriptor    string            `json:"descriptor,omitempty"`    // optional, will fallback to merchant descriptor
+	Currency      string            `json:"currency"`                // required, three letter ISO
+	Amount        int               `json:"amount"`                  // required, amount in minor units
+	Custom        map[string]string `json:"custom,omitempty"`        // optional, any custom data
 
 }
 
 // TransactionID describes the ID for a given unique transaction used for referencing
 type TransactionID struct {
 	ID string `json:"id"`
+}
+
+// TransactionCaptureDTO describes information about the the capturing amount
+type TransactionCaptureDTO struct {
+	Amount     int    `json:"amount"`     // required, amount in minor units (100 = DKK 1,00)
+	Currency   string `json:"currency"`   // optional, expected currency (for additional verification)
+	Descriptor string `json:"descriptor"` // optional, text on client bank statement
+}
+
+// CardCode describes if a given code is present to the card or not
+type CardCode struct {
+	Present bool `json:"present"`
+}
+
+// Card describes card information that can be found in transactions
+type Card struct {
+	Bin    string   `json:"bin"`
+	Last4  string   `json:"last4"`
+	Expiry string   `json:"expiry"`
+	Scheme string   `json:"scheme"`
+	Code   CardCode `json:"code"`
+}
+
+// Transaction describes information about a given transaction
+type Transaction struct {
+	TransactionID
+	Test           bool                `json:"test"`
+	MerchantID     string              `json:"merchantId"`
+	Created        string              `json:"created"`
+	Amount         int                 `json:"amount"`
+	RefundedAmount int                 `json:"refundedAmount"`
+	CapturedAmount int                 `json:"capturedAmount"`
+	VoidedAmount   int                 `json:"voidedAmount"`
+	PendingAmount  int                 `json:"pendingAmount"`
+	DisputedAmount int                 `json:"disputedAmount"`
+	Card           Card                `json:"card"`
+	TDS            string              `json:"tds"`
+	Currency       string              `json:"currency"`
+	Custom         map[string]string   `json:"custom"`
+	Recurring      bool                `json:"recurring"`
+	Successful     bool                `json:"successful"`
+	Error          bool                `json:"error"`
+	Descriptor     string              `json:"descriptor"`
+	Trail          []*TransactionTrail `json:"trail"`
+}
+
+// TransactionTrailFee describes fee included in the given trail
+type TransactionTrailFee struct {
+	Flat int `json:"flat"`
+	Rate int `json:"rate"`
+}
+
+// TransactionTrail describes a given trail element in the transactions
+type TransactionTrail struct {
+	Fee        TransactionTrailFee `json:"fee"`
+	Amount     int                 `json:"amount"`
+	Balance    int                 `json:"balance"`
+	Created    string              `json:"created"`
+	Capture    bool                `json:"captrue"`
+	Descriptor string              `json:"descriptor"`
+	LineID     string              `json:"lineId"`
 }
 
 // NewClient creates a new client
@@ -275,6 +337,22 @@ func (c Client) CreateTransaction(merchantID string, dto TransactionDTO) (*Trans
 		return nil, err
 	}
 	return c.createTransaction(merchantID, bytes.NewBuffer(b))
+}
+
+// ListTransactions lists all transactions available under the given merchantID
+// https://github.com/paylike/api-docs#fetch-all-transactions
+func (c Client) ListTransactions(merchantID string, limit int) ([]*Transaction, error) {
+	return c.listTransactions(merchantID, limit)
+}
+
+// CaptureTransaction captures a new amount for the given transaction
+// https://github.com/paylike/api-docs#capture-a-transaction
+func (c Client) CaptureTransaction(transactionID string, dto TransactionCaptureDTO) (*Transaction, error) {
+	b, err := json.Marshal(dto)
+	if err != nil {
+		return nil, err
+	}
+	return c.captureTransaction(transactionID, bytes.NewBuffer(b))
 }
 
 // getURL is to build the base API url along with the given dynamic route path
@@ -448,6 +526,30 @@ func (c Client) createTransaction(merchantID string, body io.Reader) (*Transacti
 		return nil, err
 	}
 	var marshalled map[string]*TransactionID
+	return marshalled["transaction"], c.executeRequestAndMarshal(req, &marshalled)
+}
+
+// listTransactions handles the underlying logic of executing the API requests
+// towards the merchant API and lists all related transactions
+func (c Client) listTransactions(merchantID string, limit int) ([]*Transaction, error) {
+	path := fmt.Sprintf("/merchants/%s/transactions?limit=%d", merchantID, limit)
+	req, err := http.NewRequest("GET", c.getURL(path), nil)
+	if err != nil {
+		return nil, err
+	}
+	var marshalled []*Transaction
+	return marshalled, c.executeRequestAndMarshal(req, &marshalled)
+}
+
+// captureTransaction handles the underlying logic of executing the API requests
+// towards the merchant API and captures a new amount for a given transaction
+func (c Client) captureTransaction(transactionID string, body io.Reader) (*Transaction, error) {
+	path := fmt.Sprintf("/transactions/%s/captures", transactionID)
+	req, err := http.NewRequest("POST", c.getURL(path), body)
+	if err != nil {
+		return nil, err
+	}
+	var marshalled map[string]*Transaction
 	return marshalled["transaction"], c.executeRequestAndMarshal(req, &marshalled)
 }
 

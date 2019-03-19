@@ -343,9 +343,42 @@ func TestCreateTransaction(t *testing.T) {
 		TransactionID: "560fd96b7973ff3d2362a78c",
 		Currency:      "EUR",
 		Amount:        200,
-		Custom:        struct{ Source string }{"go client test"},
+		Custom:        map[string]string{"source": "test"},
 	}
 	data, err := client.CreateTransaction("55006bdfe0308c4cbfdbd0e1", dto)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, data)
+}
+
+func TestListTransactions(t *testing.T) {
+	client := NewClient(TestKey).SetKey("4ff7de37-dddf-4e51-8cc9-48b61a102923")
+	transactions, err := client.ListTransactions("55006bdfe0308c4cbfdbd0e1", 20)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, transactions)
+	assert.Len(t, transactions, 20)
+}
+
+func TestCaptureTransactions(t *testing.T) {
+	client := NewClient(TestKey).SetKey("4ff7de37-dddf-4e51-8cc9-48b61a102923")
+	transactionDTO := TransactionDTO{
+		TransactionID: "560fd96b7973ff3d2362a78c",
+		Currency:      "EUR",
+		Amount:        200,
+		Custom:        map[string]string{"source": "test"},
+	}
+	data, err := client.CreateTransaction("55006bdfe0308c4cbfdbd0e1", transactionDTO)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, data)
+
+	captureDTO := TransactionCaptureDTO{
+		Amount:     2,
+		Currency:   "EUR",
+		Descriptor: "Testing",
+	}
+	transaction, err := client.CaptureTransaction(data.ID, captureDTO)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, transaction)
+	assert.Len(t, transaction.Trail, 1)
+	assert.Equal(t, transaction.Trail[0].Amount, captureDTO.Amount)
+	assert.Equal(t, transaction.Trail[0].Descriptor, captureDTO.Descriptor)
 }
