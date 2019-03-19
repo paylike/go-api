@@ -148,12 +148,12 @@ type Line struct {
 // TransactionDTO describes options in terms of the transaction
 // creation API
 type TransactionDTO struct {
-	CardID        string            `json:"cardId,omitempty"`        // required if no TransactionID is present
-	TransactionID string            `json:"transactionId,omitempty"` // required if no CardID is present
-	Descriptor    string            `json:"descriptor,omitempty"`    // optional, will fallback to merchant descriptor
-	Currency      string            `json:"currency"`                // required, three letter ISO
-	Amount        int               `json:"amount"`                  // required, amount in minor units
-	Custom        map[string]string `json:"custom,omitempty"`        // optional, any custom data
+	CardID        string                 `json:"cardId,omitempty"`        // required if no TransactionID is present
+	TransactionID string                 `json:"transactionId,omitempty"` // required if no CardID is present
+	Descriptor    string                 `json:"descriptor,omitempty"`    // optional, will fallback to merchant descriptor
+	Currency      string                 `json:"currency"`                // required, three letter ISO
+	Amount        int                    `json:"amount"`                  // required, amount in minor units
+	Custom        map[string]interface{} `json:"custom,omitempty"`        // optional, any custom data
 
 }
 
@@ -186,24 +186,24 @@ type Card struct {
 // Transaction describes information about a given transaction
 type Transaction struct {
 	TransactionID
-	Test           bool                `json:"test"`
-	MerchantID     string              `json:"merchantId"`
-	Created        string              `json:"created"`
-	Amount         int                 `json:"amount"`
-	RefundedAmount int                 `json:"refundedAmount"`
-	CapturedAmount int                 `json:"capturedAmount"`
-	VoidedAmount   int                 `json:"voidedAmount"`
-	PendingAmount  int                 `json:"pendingAmount"`
-	DisputedAmount int                 `json:"disputedAmount"`
-	Card           Card                `json:"card"`
-	TDS            string              `json:"tds"`
-	Currency       string              `json:"currency"`
-	Custom         map[string]string   `json:"custom"`
-	Recurring      bool                `json:"recurring"`
-	Successful     bool                `json:"successful"`
-	Error          bool                `json:"error"`
-	Descriptor     string              `json:"descriptor"`
-	Trail          []*TransactionTrail `json:"trail"`
+	Test           bool                   `json:"test"`
+	MerchantID     string                 `json:"merchantId"`
+	Created        string                 `json:"created"`
+	Amount         int                    `json:"amount"`
+	RefundedAmount int                    `json:"refundedAmount"`
+	CapturedAmount int                    `json:"capturedAmount"`
+	VoidedAmount   int                    `json:"voidedAmount"`
+	PendingAmount  int                    `json:"pendingAmount"`
+	DisputedAmount int                    `json:"disputedAmount"`
+	Card           Card                   `json:"card"`
+	TDS            string                 `json:"tds"`
+	Currency       string                 `json:"currency"`
+	Custom         map[string]interface{} `json:"custom"`
+	Recurring      bool                   `json:"recurring"`
+	Successful     bool                   `json:"successful"`
+	Error          bool                   `json:"error"`
+	Descriptor     string                 `json:"descriptor"`
+	Trail          []*TransactionTrail    `json:"trail"`
 }
 
 // TransactionTrailFee describes fee included in the given trail
@@ -221,6 +221,14 @@ type TransactionTrail struct {
 	Capture    bool                `json:"captrue"`
 	Descriptor string              `json:"descriptor"`
 	LineID     string              `json:"lineId"`
+	Dispute    TrailDispute        `json:"dispute"`
+}
+
+// TrailDispute describes a given dispute in a given trail
+type TrailDispute struct {
+	ID   string `json:"id"`
+	Won  bool   `json:"won,omitempty"`
+	Lost bool   `json:"lost,omitempty"`
 }
 
 // NewClient creates a new client
@@ -373,6 +381,12 @@ func (c Client) VoidTransaction(transactionID string, dto TransactionTrailDTO) (
 		return nil, err
 	}
 	return c.voidTransaction(transactionID, bytes.NewBuffer(b))
+}
+
+// FindTransaction finds the given transaction by ID
+// https://github.com/paylike/api-docs#fetch-a-transaction
+func (c Client) FindTransaction(transactionID string) (*Transaction, error) {
+	return c.findTransaction(transactionID)
 }
 
 // getURL is to build the base API url along with the given dynamic route path
@@ -590,6 +604,18 @@ func (c Client) refundTransaction(transactionID string, body io.Reader) (*Transa
 func (c Client) voidTransaction(transactionID string, body io.Reader) (*Transaction, error) {
 	path := fmt.Sprintf("/transactions/%s/voids", transactionID)
 	req, err := http.NewRequest("POST", c.getURL(path), body)
+	if err != nil {
+		return nil, err
+	}
+	var marshalled map[string]*Transaction
+	return marshalled["transaction"], c.executeRequestAndMarshal(req, &marshalled)
+}
+
+// findTransaction handles the underlying logic of executing the API requests
+// towards the merchant API and tries to search for a given transaction
+func (c Client) findTransaction(transactionID string) (*Transaction, error) {
+	path := fmt.Sprintf("/transactions/%s", transactionID)
+	req, err := http.NewRequest("GET", c.getURL(path), nil)
 	if err != nil {
 		return nil, err
 	}
