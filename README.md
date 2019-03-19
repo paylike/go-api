@@ -16,7 +16,7 @@ third parties, please reach out and we will make your app's API key hidden.
 ## Install
 
 ```shell
-dep ensure -add github.com/paylike/node-api
+dep ensure -add github.com/paylike/go-api
 ```
 
 ```golang
