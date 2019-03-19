@@ -358,7 +358,7 @@ func TestListTransactions(t *testing.T) {
 	assert.Len(t, transactions, 20)
 }
 
-func TestCaptureTransactions(t *testing.T) {
+func TestCaptureTransaction(t *testing.T) {
 	client := NewClient(TestKey).SetKey("4ff7de37-dddf-4e51-8cc9-48b61a102923")
 	transactionDTO := TransactionDTO{
 		TransactionID: "560fd96b7973ff3d2362a78c",
@@ -370,7 +370,7 @@ func TestCaptureTransactions(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotEmpty(t, data)
 
-	captureDTO := TransactionCaptureDTO{
+	captureDTO := TransactionTrailDTO{
 		Amount:     2,
 		Currency:   "EUR",
 		Descriptor: "Testing",
@@ -381,4 +381,68 @@ func TestCaptureTransactions(t *testing.T) {
 	assert.Len(t, transaction.Trail, 1)
 	assert.Equal(t, transaction.Trail[0].Amount, captureDTO.Amount)
 	assert.Equal(t, transaction.Trail[0].Descriptor, captureDTO.Descriptor)
+}
+
+func TestRefundTransaction(t *testing.T) {
+	client := NewClient(TestKey).SetKey("4ff7de37-dddf-4e51-8cc9-48b61a102923")
+	transactionDTO := TransactionDTO{
+		TransactionID: "560fd96b7973ff3d2362a78c",
+		Currency:      "EUR",
+		Amount:        200,
+		Custom:        map[string]string{"source": "test"},
+	}
+	data, err := client.CreateTransaction("55006bdfe0308c4cbfdbd0e1", transactionDTO)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, data)
+
+	captureDTO := TransactionTrailDTO{
+		Amount:     2,
+		Currency:   "EUR",
+		Descriptor: "Testing Capture",
+	}
+	transaction, err := client.CaptureTransaction(data.ID, captureDTO)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, transaction)
+
+	refundDTO := TransactionTrailDTO{
+		Amount:     1,
+		Descriptor: "Testing Refund",
+	}
+	transaction, err = client.RefundTransaction(data.ID, refundDTO)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, transaction)
+	assert.Len(t, transaction.Trail, 2)
+	assert.Equal(t, transaction.Trail[1].Amount, refundDTO.Amount)
+	assert.Equal(t, transaction.Trail[1].Descriptor, refundDTO.Descriptor)
+}
+
+func TestVoidTransaction(t *testing.T) {
+	client := NewClient(TestKey).SetKey("4ff7de37-dddf-4e51-8cc9-48b61a102923")
+	transactionDTO := TransactionDTO{
+		TransactionID: "560fd96b7973ff3d2362a78c",
+		Currency:      "EUR",
+		Amount:        200,
+		Custom:        map[string]string{"source": "test"},
+	}
+	data, err := client.CreateTransaction("55006bdfe0308c4cbfdbd0e1", transactionDTO)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, data)
+
+	captureDTO := TransactionTrailDTO{
+		Amount:     2,
+		Currency:   "EUR",
+		Descriptor: "Testing Capture",
+	}
+	transaction, err := client.CaptureTransaction(data.ID, captureDTO)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, transaction)
+
+	voidDTO := TransactionTrailDTO{
+		Amount: 1,
+	}
+	transaction, err = client.VoidTransaction(data.ID, voidDTO)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, transaction)
+	assert.Len(t, transaction.Trail, 2)
+	assert.Equal(t, transaction.Trail[1].Amount, voidDTO.Amount)
 }

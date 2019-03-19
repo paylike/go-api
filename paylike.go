@@ -162,11 +162,11 @@ type TransactionID struct {
 	ID string `json:"id"`
 }
 
-// TransactionCaptureDTO describes information about the the capturing amount
-type TransactionCaptureDTO struct {
-	Amount     int    `json:"amount"`     // required, amount in minor units (100 = DKK 1,00)
-	Currency   string `json:"currency"`   // optional, expected currency (for additional verification)
-	Descriptor string `json:"descriptor"` // optional, text on client bank statement
+// TransactionTrailDTO describes information about the the capturing / refunding / voiding amount
+type TransactionTrailDTO struct {
+	Amount     int    `json:"amount"`               // required, amount in minor units (100 = DKK 1,00)
+	Currency   string `json:"currency,omitempty"`   // optional, expected currency (for additional verification)
+	Descriptor string `json:"descriptor,omitempty"` // optional, text on client bank statement
 }
 
 // CardCode describes if a given code is present to the card or not
@@ -347,12 +347,32 @@ func (c Client) ListTransactions(merchantID string, limit int) ([]*Transaction, 
 
 // CaptureTransaction captures a new amount for the given transaction
 // https://github.com/paylike/api-docs#capture-a-transaction
-func (c Client) CaptureTransaction(transactionID string, dto TransactionCaptureDTO) (*Transaction, error) {
+func (c Client) CaptureTransaction(transactionID string, dto TransactionTrailDTO) (*Transaction, error) {
 	b, err := json.Marshal(dto)
 	if err != nil {
 		return nil, err
 	}
 	return c.captureTransaction(transactionID, bytes.NewBuffer(b))
+}
+
+// RefundTransaction refunds a given amount for the given transaction
+// https://github.com/paylike/api-docs#refund-a-transaction
+func (c Client) RefundTransaction(transactionID string, dto TransactionTrailDTO) (*Transaction, error) {
+	b, err := json.Marshal(dto)
+	if err != nil {
+		return nil, err
+	}
+	return c.refundTransaction(transactionID, bytes.NewBuffer(b))
+}
+
+// VoidTransaction cancels a given amount completely or partially
+// https://github.com/paylike/api-docs#void-a-transaction
+func (c Client) VoidTransaction(transactionID string, dto TransactionTrailDTO) (*Transaction, error) {
+	b, err := json.Marshal(dto)
+	if err != nil {
+		return nil, err
+	}
+	return c.voidTransaction(transactionID, bytes.NewBuffer(b))
 }
 
 // getURL is to build the base API url along with the given dynamic route path
@@ -545,6 +565,30 @@ func (c Client) listTransactions(merchantID string, limit int) ([]*Transaction, 
 // towards the merchant API and captures a new amount for a given transaction
 func (c Client) captureTransaction(transactionID string, body io.Reader) (*Transaction, error) {
 	path := fmt.Sprintf("/transactions/%s/captures", transactionID)
+	req, err := http.NewRequest("POST", c.getURL(path), body)
+	if err != nil {
+		return nil, err
+	}
+	var marshalled map[string]*Transaction
+	return marshalled["transaction"], c.executeRequestAndMarshal(req, &marshalled)
+}
+
+// refundTransaction handles the underlying logic of executing the API requests
+// towards the merchant API and refunds a given amount for a given transaction
+func (c Client) refundTransaction(transactionID string, body io.Reader) (*Transaction, error) {
+	path := fmt.Sprintf("/transactions/%s/refunds", transactionID)
+	req, err := http.NewRequest("POST", c.getURL(path), body)
+	if err != nil {
+		return nil, err
+	}
+	var marshalled map[string]*Transaction
+	return marshalled["transaction"], c.executeRequestAndMarshal(req, &marshalled)
+}
+
+// voidTransaction handles the underlying logic of executing the API requests
+// towards the merchant API and cancels a given amount payment partially or completely
+func (c Client) voidTransaction(transactionID string, body io.Reader) (*Transaction, error) {
+	path := fmt.Sprintf("/transactions/%s/voids", transactionID)
 	req, err := http.NewRequest("POST", c.getURL(path), body)
 	if err != nil {
 		return nil, err
