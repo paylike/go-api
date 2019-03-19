@@ -90,7 +90,7 @@ apps, err := client.FetchAppsToMerchant(merchant.ID, 2)
 lines, err := client.FetchLinesToMerchant(merchant.ID, 1)
 
 // create transaction
-data, err := client.CreateTransaction(TestMerchant, TransactionDTO{
+data, err := client.CreateTransaction(merchant.ID, TransactionDTO{
     TransactionID: "560fd96b7973ff3d2362a78c",
     Currency:      "EUR",
     Amount:        200,
