@@ -174,8 +174,8 @@ type CardCode struct {
 	Present bool `json:"present"`
 }
 
-// Card describes card information that can be found in transactions
-type Card struct {
+// TransactionCard describes card information that can be found in transactions
+type TransactionCard struct {
 	Bin    string   `json:"bin"`
 	Last4  string   `json:"last4"`
 	Expiry string   `json:"expiry"`
@@ -195,7 +195,7 @@ type Transaction struct {
 	VoidedAmount   int                    `json:"voidedAmount"`
 	PendingAmount  int                    `json:"pendingAmount"`
 	DisputedAmount int                    `json:"disputedAmount"`
-	Card           Card                   `json:"card"`
+	Card           TransactionCard        `json:"card"`
 	TDS            string                 `json:"tds"`
 	Currency       string                 `json:"currency"`
 	Custom         map[string]interface{} `json:"custom"`
@@ -229,6 +229,25 @@ type TrailDispute struct {
 	ID   string `json:"id"`
 	Won  bool   `json:"won,omitempty"`
 	Lost bool   `json:"lost,omitempty"`
+}
+
+// Card describes the full information about a given card
+type Card struct {
+	TransactionCard
+	CardID
+	MerchantID string `json:"merchantId"`
+	Created    string `json:"created"`
+}
+
+// CardDTO describes required information to create a new card
+type CardDTO struct {
+	TransactionID string `json:"transactionId"`
+	Notes         string `json:"notes"`
+}
+
+// CardID describes a given card's ID
+type CardID struct {
+	ID string `json:"id"`
 }
 
 // NewClient creates a new client
@@ -387,6 +406,22 @@ func (c Client) VoidTransaction(transactionID string, dto TransactionTrailDTO) (
 // https://github.com/paylike/api-docs#fetch-a-transaction
 func (c Client) FindTransaction(transactionID string) (*Transaction, error) {
 	return c.findTransaction(transactionID)
+}
+
+// FetchCard finds the given card by ID
+// https://github.com/paylike/api-docs#fetch-a-card
+func (c Client) FetchCard(cardID string) (*Card, error) {
+	return c.fetchCard(cardID)
+}
+
+// CreateCard saves a new record for a given card
+// https://github.com/paylike/api-docs#save-a-card
+func (c Client) CreateCard(merchantID string, dto CardDTO) (*CardID, error) {
+	b, err := json.Marshal(dto)
+	if err != nil {
+		return nil, err
+	}
+	return c.createCard(merchantID, bytes.NewBuffer(b))
 }
 
 // getURL is to build the base API url along with the given dynamic route path
@@ -621,6 +656,30 @@ func (c Client) findTransaction(transactionID string) (*Transaction, error) {
 	}
 	var marshalled map[string]*Transaction
 	return marshalled["transaction"], c.executeRequestAndMarshal(req, &marshalled)
+}
+
+// fetchCard handles the underlying logic of executing the API requests
+// towards the cards API and tries to find a given card by ID
+func (c Client) fetchCard(cardID string) (*Card, error) {
+	path := fmt.Sprintf("/cards/%s", cardID)
+	req, err := http.NewRequest("GET", c.getURL(path), nil)
+	if err != nil {
+		return nil, err
+	}
+	var marshalled map[string]*Card
+	return marshalled["card"], c.executeRequestAndMarshal(req, &marshalled)
+}
+
+// createCard handles the underlying logic of executing the API requests
+// towards the cards API and tries to find a given card by ID
+func (c Client) createCard(merchantID string, body io.Reader) (*CardID, error) {
+	path := fmt.Sprintf("/merchants/%s/cards", merchantID)
+	req, err := http.NewRequest("POST", c.getURL(path), body)
+	if err != nil {
+		return nil, err
+	}
+	var marshalled map[string]*CardID
+	return marshalled["card"], c.executeRequestAndMarshal(req, &marshalled)
 }
 
 // executeRequestAndMarshal sets the correct headers, then executes the request and tries to marshal

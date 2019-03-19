@@ -475,3 +475,18 @@ func TestFindTransaction(t *testing.T) {
 	assert.Equal(t, foundTransaction.Trail[0].Amount, captureDTO.Amount)
 	assert.Equal(t, transaction, foundTransaction)
 }
+
+func TestFetchCard(t *testing.T) {
+	client := NewClient(TestKey).SetKey("4ff7de37-dddf-4e51-8cc9-48b61a102923")
+	dto := CardDTO{
+		TransactionID: "560fd96b7973ff3d2362a78c",
+	}
+	data, err := client.CreateCard("55006bdfe0308c4cbfdbd0e1", dto)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, data)
+
+	card, err := client.FetchCard(data.ID)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, card)
+	assert.Equal(t, card.ID, data.ID)
+}
