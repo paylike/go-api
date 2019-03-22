@@ -47,7 +47,7 @@ app, err := client.FetchApp()
 merchants, err := client.FetchMerchants("appID", 10)
 
 // create merchant
-merchant, err := client.CreateMerchant(MerchantCreateDTO{
+merchant, err := client.CreateMerchant(paylike.MerchantCreateDTO{
     Test:       true,
     Currency:   "HUF",
     Email:      TestEmail,
@@ -59,7 +59,7 @@ merchant, err := client.CreateMerchant(MerchantCreateDTO{
 })
 
 // update merchant
-err := client.UpdateMerchant(MerchantUpdateDTO{
+err := client.UpdateMerchant(paylike.MerchantUpdateDTO{
     Name:       "Test",
     Descriptor: "Test",
     Email:      "test@test.com",
@@ -90,7 +90,7 @@ apps, err := client.FetchAppsToMerchant(merchant.ID, 2)
 lines, err := client.FetchLinesToMerchant(merchant.ID, 1)
 
 // create transaction
-data, err := client.CreateTransaction(merchant.ID, TransactionDTO{
+data, err := client.CreateTransaction(merchant.ID, paylike.TransactionDTO{
     TransactionID: "560fd96b7973ff3d2362a78c",
     Currency:      "EUR",
     Amount:        200,
@@ -101,7 +101,7 @@ data, err := client.CreateTransaction(merchant.ID, TransactionDTO{
 transactions, err := client.ListTransactions(merchant.ID, 20)
 
 // transaction capture
-dto := TransactionTrailDTO{
+dto := paylike.TransactionTrailDTO{
     Amount:     2,
     Currency:   "EUR",
     Descriptor: "Testing",
@@ -109,14 +109,14 @@ dto := TransactionTrailDTO{
 transaction, err := client.CaptureTransaction(transaction.ID, dto)
 
 // transaction refund
-dto := TransactionTrailDTO{
+dto := paylike.TransactionTrailDTO{
     Amount:     1,
     Descriptor: "Testing Refund",
 }
 transaction, err := client.RefundTransaction(data.ID, dto)
 
 // transaction void
-dto := TransactionTrailDTO{
+dto := paylike.TransactionTrailDTO{
     Amount: 1,
 }
 transaction, err := client.VoidTransaction(data.ID, dto)
@@ -125,10 +125,10 @@ transaction, err := client.VoidTransaction(data.ID, dto)
 transaction, err := client.FindTransaction(data.ID)
 
 // card create
-dto := CardDTO{
+dto := paylike.CardDTO{
     TransactionID: "560fd96b7973ff3d2362a78c",
 }
-data, err := client.CreateCard(TestMerchant, dto)
+data, err := client.CreateCard(merchant.ID, dto)
 
 // card find
 card, err := client.FetchCard(data.ID)
